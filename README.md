@@ -113,6 +113,33 @@ Either way, once Relapse runs the ELF loader listens on **port 9021** — send y
 payloads there. Progress is reported over the on-console UDP logger (BD-JB5's
 RemoteLogger, port **18194**; run its `log_client.py` first).
 
+## Autoloader
+
+After elfldr is up (and the crossed pipes have been repaired), Relapse pushes
+an ELF to `127.0.0.1:9021` and then closes the Disc Player with
+`kill(getpid(), SIGKILL)`, the same exit used by
+[itsPLK/ps5-bdjb-autoloader](https://github.com/itsPLK/ps5-bdjb-autoloader).
+The first `autoload.elf` found wins:
+
+1. `/mnt/usb0..7/autoload.elf`: root of a USB drive, so you can swap the payload without reburning
+2. `/data/autoload.elf`: console internal storage
+3. `/mnt/disc/autoload.elf`: root of the disc
+4. bundled in the jar at build time: `make ... AUTOLOAD_ELF=/path/to/payload.elf`
+   (stored as `/autoload.elf`)
+
+Behaviour:
+
+- ELF found and sent: the app closes about 3 s later. elfldr and the spawned
+  payload keep running.
+- No ELF found: nothing is sent and the app still closes. elfldr stays on `:9021`
+  for manual use.
+- elfldr unreachable after 30 s, the file is not an ELF, or the send fails: the
+  app stays open so the log can be read.
+
+To chain several payloads, point `autoload.elf` at
+[ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader) and
+use its `ps5_autoloader/autoload.txt`.
+
 ## Known issues
 
 - Closing the application after running used to reboot the console: the crossed
@@ -141,5 +168,7 @@ RemoteLogger, port **18194**; run its `log_client.py` first).
 - **ps5-payload-dev** — [elfldr](https://github.com/ps5-payload-dev/elfldr).
 - **john-tornblom** — [bdj-sdk](https://github.com/john-tornblom/bdj-sdk).
 - **Gezine** — BD-JB5 loader.
+- **itsPLK** — [ps5-bdjb-autoloader](https://github.com/itsPLK/ps5-bdjb-autoloader):
+  autoload flow (native file reads, send to elfldr, close the host app).
 - **edisnord** — [relapse-y2jb](https://github.com/edisnord/relapse-y2jb): hardware
   analysis of the close panic and the pipe-restore method.

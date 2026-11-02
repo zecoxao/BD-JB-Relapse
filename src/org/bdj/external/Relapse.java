@@ -2067,6 +2067,12 @@ public static void main(String[] args) {
             cleanup();
         }
     }
+
+    /* Pipes are repaired at this point, so it is safe to hand an ELF to
+     * elfldr and (optionally) end this process. */
+    if (launched) {
+        Autoloader.run();
+    }
 }
 
 /* ===================================================================== */

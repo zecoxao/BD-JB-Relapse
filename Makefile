@@ -19,10 +19,24 @@ JFLAGS        := -Xlint:-options -source 1.4 -target 1.4
 
 all: $(JAR_NAME)
 
+# Optional: bundle an ELF that Relapse pushes to elfldr (:9021) once it is up,
+# then closes the Disc Player.  Stored in the jar as /autoload.elf.
+#   make AUTOLOAD_ELF=/path/to/payload.elf
+AUTOLOAD_ELF  ?=
+AUTOLOAD_DIR  := build/autoload
+
 # Create JAR with manifest
-$(JAR_NAME): $(SOURCES) manifest.txt
+$(JAR_NAME): $(SOURCES) manifest.txt $(AUTOLOAD_ELF) FORCE
 	$(JAVAC) $(JFLAGS) -cp $(CLASSPATH) $(SOURCES)
-	$(JAR) cfm $@ manifest.txt -C src/ .
+	rm -rf $(AUTOLOAD_DIR) && mkdir -p $(AUTOLOAD_DIR)
+ifneq ($(strip $(AUTOLOAD_ELF)),)
+	cp "$(AUTOLOAD_ELF)" $(AUTOLOAD_DIR)/autoload.elf
+endif
+	$(JAR) cfm $@ manifest.txt -C src/ . -C $(AUTOLOAD_DIR) .
+
+FORCE:
+.PHONY: all clean FORCE
 
 clean:
 	rm -f src/org/bdj/api/*.class src/org/bdj/*.class src/org/bdj/external/*.class $(JAR_NAME)
+	rm -rf $(AUTOLOAD_DIR)
