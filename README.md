@@ -13,13 +13,15 @@ server.
 > **fixed by 0xXOR**.
 > Original *relapse* exploit from the PS5 research community (WebKit PoC).
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 
 ## Supported firmware
 
 PS5 firmwares up to and including **13.42**. Per-firmware offset tables are included
 for **7.00 – 13.60** (`RelapseOffsets.java`); development and testing were done on a
-13.42 devkit.
+13.42 devkit. 11.40 is included as well: upstream Relapse-Exploit skips it (the
+firmware image is missing the modules its offsets are read from), so its table comes
+from notmaj0r's relapse port.
 
 ## How it works
 
@@ -32,6 +34,11 @@ chain:
 - **kexp** (ufm42) — applies the kernel patches and bootstraps the payload loader.
 - **elfldr** (ps5-payload-dev) — migrates out to a system service and serves ELF
   payloads on **port 9021**.
+- **unified autoloader** ([ps5-bdjb-autoloader](https://github.com/itsPLK/ps5-bdjb-autoloader))
+  — streamed to elfldr as soon as the loader accepts connections. It kills the
+  disc player entry point, then launches the payloads listed in
+  `ps5_autoloader/autoload.txt` from USB or `/data`, or starts Payload Manager
+  when no config exists. See [Autoloading payloads](#autoloading-payloads).
 
 ## Implementation notes (BD-J port)
 
@@ -93,8 +100,10 @@ stubs, builds `Relapse.jar`, then assembles a bootable disc image from
 the on-disc payload, and attaches both `Relapse.jar` and `BD-JB-Relapse-<tag>.iso`
 to the matching GitHub release.
 
-The embedded `kexp_2026_10_26.bin` and `elfldr-ps5-0.27.elf` under
-`src/org/bdj/external/` are bundled into the jar automatically.
+The embedded payloads under `src/org/bdj/external/` — kexp, elfldr and the
+unified autoloader — are bundled into the jar automatically. The ISO also carries
+`/ps5-unified-autoloader.elf` at the disc root, mirroring the upstream
+autoloader disc layout.
 
 ## Usage
 
@@ -109,9 +118,78 @@ Each release ships two artifacts:
 - **`Relapse.jar`** — the payload on its own, for the classic flow: load it with
   BD-JB5's **RemoteJarLoader** (`jar_client.py`, port **9025**).
 
-Either way, once Relapse runs the ELF loader listens on **port 9021** — send your
-payloads there. Progress is reported over the on-console UDP logger (BD-JB5's
-RemoteLogger, port **18194**; run its `log_client.py` first).
+Either way, once the exploit finishes the ELF loader listens on **port 9021**.
+Relapse immediately hands that port to the autoloader, so payloads can be loaded
+two ways:
+
+- **Automatically** — put them in a `ps5_autoloader` directory with an
+  `autoload.txt` (see below). This is what the bundled autoloader consumes.
+- **Manually** — send an ELF to port 9021 yourself, exactly as before. elfldr
+  keeps listening after the autoloader is done, so this still works.
+
+Progress is reported over the on-console UDP logger (BD-JB5's RemoteLogger, port
+**18194**; run its `log_client.py` first).
+
+## Autoloading payloads
+
+Once elfldr is up, Relapse streams the
+[ps5-bdjb-autoloader](https://github.com/itsPLK/ps5-bdjb-autoloader) unified
+autoloader into it. From then on the autoloader owns the boot:
+
+1. it kills the disc player entry point (this app) — the exploit has already
+   restored its pipes, so this is safe;
+2. it looks for a config, in this order:
+   - `/mnt/usb[0-7]/ps5_autoloader_bdjb/autoload.txt`
+   - `/data/ps5_autoloader_bdjb/autoload.txt`
+   - `/mnt/usb[0-7]/ps5_autoloader/autoload.txt`
+   - `/data/ps5_autoloader/autoload.txt`
+3. if found, it launches every listed payload through elfldr;
+4. if not found, it starts the bundled **Payload Manager** so payloads can be
+   configured from a browser.
+
+To use the manual config, create `ps5_autoloader` on the root of a USB drive (or
+`/data/ps5_autoloader` on the console) containing the `.elf`/`.bin` payloads and
+an `autoload.txt`:
+
+```text
+# one entry per line; names are case-sensitive and relative to this directory
+ftpsrv.elf
+!1000                # sleep 1000 ms before the next entry
+kstuff.elf
+@sync                # optional: move this directory to /data after a clean run
+```
+
+`!<ms>` sleeps, `#` starts a comment, `@sync` copies the config to internal
+storage once every payload loaded successfully. The `.elf` files in
+`ps5_autoloader` are whatever you put there — the autoloader only bundles
+Payload Manager as the no-config fallback.
+
+## Payload versions
+
+The chain shipped in `Relapse.jar` is:
+
+| Payload | Version | Notes |
+| --- | --- | --- |
+| kexp | ufm42/kexp `0062384` (relinked 2026-10-26) | mapped as raw shellcode, entry at offset 0 |
+| elfldr | ps5-payload-dev 0.27 build | loaded by kexp via `base + e_entry`; entry is `0x46b8` |
+| unified autoloader | itsPLK/ps5-unified-autoloader `v0.1.7-abc3b82` | streamed to port 9021 |
+
+`kexp` and `elfldr` are pinned to builds that match the loader ABI: kexp must be
+relinked for offset-0 execution, and kexp loads elfldr with `base + e_entry` (the
+upstream prebuilt release has `e_entry = 0`, so it is not a drop-in). Rebuild
+those two from source and replace the blobs if you need newer code.
+
+The autoloader has no such constraint and can be refreshed from its latest
+release:
+
+```sh
+make payloads          # or: scripts/update_payloads.sh
+make payload-versions  # show what is currently embedded
+```
+
+This downloads the newest `ps5-unified-autoloader-*.elf`, prunes the old one and
+regenerates `PayloadPaths.java`, so the next `make` embeds it.
+
 
 ## Known issues
 
@@ -139,6 +217,10 @@ RemoteLogger, port **18194**; run its `log_client.py` first).
 - **relapse** — original PS5 kernel exploit (`aio_multi_wait` mode-0 UAF).
 - **ufm42** — [kexp](https://github.com/ufm42/kexp).
 - **ps5-payload-dev** — [elfldr](https://github.com/ps5-payload-dev/elfldr).
+- **itsPLK** — [ps5-bdjb-autoloader](https://github.com/itsPLK/ps5-bdjb-autoloader)
+  and [ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader).
+- **notmaj0r** — Relapse offsets for firmware 11.40 (via
+  [ps5-y2jb-autoloader](https://github.com/itsPLK/ps5-y2jb-autoloader)).
 - **john-tornblom** — [bdj-sdk](https://github.com/john-tornblom/bdj-sdk).
 - **Gezine** — BD-JB5 loader.
 - **edisnord** — [relapse-y2jb](https://github.com/edisnord/relapse-y2jb): hardware

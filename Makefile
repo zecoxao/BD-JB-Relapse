@@ -19,6 +19,16 @@ JFLAGS        := -Xlint:-options -source 1.4 -target 1.4
 
 all: $(JAR_NAME)
 
+# Fetch the newest ps5-unified-autoloader release and regenerate
+# PayloadPaths.java.  kexp/elfldr are pinned to loader-ABI-compatible builds;
+# see README, "Payload versions".
+payloads:
+	bash scripts/update_payloads.sh
+
+# Print the payload versions currently bundled in Relapse.jar.
+payload-versions:
+	bash scripts/update_payloads.sh --check
+
 # Create JAR with manifest
 $(JAR_NAME): $(SOURCES) manifest.txt
 	$(JAVAC) $(JFLAGS) -cp $(CLASSPATH) $(SOURCES)
@@ -26,3 +36,5 @@ $(JAR_NAME): $(SOURCES) manifest.txt
 
 clean:
 	rm -f src/org/bdj/api/*.class src/org/bdj/*.class src/org/bdj/external/*.class $(JAR_NAME)
+
+.PHONY: all payloads payload-versions clean

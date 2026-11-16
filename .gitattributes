@@ -1,0 +1,8 @@
+# Keep text files LF everywhere so the shell scripts (and the Java sources the
+# BD-J toolchain compiles) survive a Windows checkout with core.autocrlf=true.
+* text=auto eol=lf
+
+# Payload blobs must be byte-identical to upstream releases.
+*.elf binary
+*.bin binary
+*.png binary

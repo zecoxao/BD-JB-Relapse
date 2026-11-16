@@ -184,6 +184,7 @@ public class RelapseOffsets {
         initialize1060();
         initialize1100();
         initialize1120();
+        initialize1140();
         initialize1160();
         initialize1200();
         initialize1202();
@@ -2863,6 +2864,137 @@ public class RelapseOffsets {
         off.dynlibLibkernelRef = 0x18;
 
         firmwareOffsets.put("11.20", off);
+    }
+
+    /* 11.40 is absent from the original Relapse-Exploit offset set (that
+     * firmware image is missing the modules the offsets are read out of).
+     * These values come from notmaj0r's relapse port, as integrated by
+     * itsPLK/ps5-y2jb-autoloader. */
+    private static void initialize1140() {
+        RelapseOffsets off = new RelapseOffsets();
+        off.FW_VERSION = "11.40";
+
+        off.syscalls = new Syscalls();
+        off.syscalls.socket = 0x1b340L;
+        off.syscalls.setsockopt = 0x1bc50L;
+        off.syscalls.read = 0x1b100L;
+        off.syscalls.write = 0x1b060L;
+        off.syscalls.recvfrom = 0x1c5a0L;
+        off.syscalls.getrlimit = 0x1b840L;
+        off.syscalls.setrlimit = 0x1b420L;
+        off.syscalls.socketpair = 0x1c330L;
+        off.syscalls.pipe2 = 0x1aec0L;
+        off.syscalls.aioSubmitCmd = 0x1ce00L;
+        off.syscalls.aioMultiWait = 0x1bcb0L;
+        off.syscalls.aioMultiPoll = 0x1ad40L;
+        off.syscalls.aioMultiCancel = 0x1bc90L;
+        off.syscalls.getpid = 0x1b280L;
+        off.syscalls.getuid = 0x1c3d0L;
+        off.syscalls.isInSandbox = 0x1ca60L;
+        off.syscalls.mmap = 0x1cc80L;
+        off.syscalls.jitshmCreate = 0x1bb10L;
+        off.syscalls.cpusetGetAffinity = 0x1d060L;
+        off.syscalls.cpusetSetAffinity = 0x1c820L;
+        off.syscalls.rtprioThread = 0x1bab0L;
+        off.syscalls.sysctl = 0x1c880L;
+        off.syscalls.netgetiflist = 0x1bdf0L;
+        off.syscalls.close = 0x1bd30L;
+        off.syscalls.ioctl = 0x1afa0L;
+
+        off.kernelData = 0xd30000L;
+        off.allproc = 0x35a5d70L;
+        off.rootvnode = 0x3de7510L;
+
+        off.kaslrRetStatic = 0xb53751L;
+        off.kaslrRetLow16 = 0x3751;
+
+        off.oidOriginalKind = 0x80048002;
+        off.oidWritableKind = 0x70048002;
+
+        off.oidA_base = 0x2929e90L;
+        off.oidA_kind = 0x2929eacL;
+        off.oidA_kindByte3 = 0x2929eafL;
+        off.oidA_arg1 = 0x2929eb0L;
+        off.oidA_arg1Byte1 = 0x2929eb1L;
+        off.oidA_arg1Value = 0x2929e88L;
+        off.oidA_deadSink = 0x2929eb8L;
+
+        off.oidB_base = 0x2929d68L;
+        off.oidB_kind = 0x2929d84L;
+        off.oidB_kindByte3 = 0x2929d87L;
+        off.oidB_arg1 = 0x2929d88L;
+        off.oidB_arg1Value = 0x2929ca0L;
+        off.oidB_visible = 0x2929dc0L;
+
+        off.oidC_base = 0x2c4cb50L;
+        off.oidC_kind = 0x2c4cb6cL;
+        off.oidC_arg1 = 0x2c4cb70L;
+        off.oidC_arg1Value = 0x3d670bcL;
+        off.oidC_mib = new int[] {9, 8 };
+
+        off.walkCounterAddr = 0x3d670b8L;
+        off.walkCounterMib = new int[] {9, 7 };
+
+        off.nodeMutex = 0x35686d0L;
+
+        off.rodataProbeRva = 0x11a7c0eL;
+        off.rodataProbeText = "_aio_submit_cmd\0_aio_multi_wait";
+
+        off.aioWaiterSize = 0x38;
+        off.aioRequestSize = 0x28;
+        off.aioGroupNum = 0x0;
+        off.aioGroupState = 0x8;
+        off.aioGroupWaiters = 0x50;
+        off.aioIdTablePages = 0x220;
+        off.aioIdTableSlotStride = 0x30;
+        off.aioIdTableEntryType = 0x160;
+
+        off.procPid = 0xbc;
+        off.procUcred = 0x40;
+        off.procFd = 0x48;
+        off.procAioInfo = 0xc40;
+        off.procDynlib = 0x3e8;
+
+        off.kernelPid = 0x0L;
+
+        off.ucredUid = 0x4;
+        off.ucredRuid = 0x8;
+        off.ucredSvuid = 0xc;
+        off.ucredNgroups = 0x10;
+        off.ucredRgid = 0x14;
+        off.ucredSvgid = 0x18;
+        off.ucredSceAuthId = 0x58;
+        off.ucredSceCaps = 0x60;
+        off.ucredSceCaps1 = 0x68;
+        off.ucredSceAttrs = 0x80;
+
+        off.sysCoreAuthIdLo = 0x7L;
+        off.sysCoreAuthIdHi = 0x48000000L;
+
+        off.filedescFiles = 0x0;
+        off.filedescCdir = 0x8;
+        off.filedescRdir = 0x10;
+        off.filedescJdir = 0x18;
+
+        off.filedescTableNfiles = 0x0;
+        off.filedescTableOfiles = 0x8;
+        off.filedescTableEntryStride = 0x30;
+        off.filedescTableFileData = 0x0;
+
+        off.pipeCount = 0x0;
+        off.pipeIn = 0x4;
+        off.pipeOut = 0x8;
+        off.pipeSize = 0xc;
+        off.pipeBuffer = 0x10;
+        off.pipePair = 0xe8;
+        off.pipeDefaultSize = 0x4000;
+
+        off.dynlibSyscallStart = 0xf0;
+        off.dynlibSyscallEnd = 0xf8;
+        off.dynlibRestrictFlags = 0x118;
+        off.dynlibLibkernelRef = 0x18;
+
+        firmwareOffsets.put("11.40", off);
     }
 
     private static void initialize1160() {

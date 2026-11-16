@@ -55,14 +55,20 @@ jobs:
       # bdj-sdk ships enhanced-stubs.zip; sony-stubs.jar is built above. No
       # proprietary firmware jars are needed.
       - name: Build Relapse.jar
-        run: make BDJSDK_HOME="$GITHUB_WORKSPACE/bdj-sdk" JAVA8_HOME="$JAVA_HOME"
+        run: |
+          set -e
+          make BDJSDK_HOME="$GITHUB_WORKSPACE/bdj-sdk" JAVA8_HOME="$JAVA_HOME"
+          bash scripts/update_payloads.sh --check
 
       - name: Sanity check Relapse.jar
         run: |
           set -e
           jar tf Relapse.jar | grep -q 'org/bdj/external/Relapse.class'
+          jar tf Relapse.jar | grep -q 'org/bdj/external/Autoloader.class'
+          jar tf Relapse.jar | grep -q 'org/bdj/external/PayloadPaths.class'
           jar tf Relapse.jar | grep -q 'org/bdj/external/kexp_2026_10_26.bin'
           jar tf Relapse.jar | grep -q 'org/bdj/external/elfldr-ps5-0.27.elf'
+          jar tf Relapse.jar | grep -q 'org/bdj/external/ps5-unified-autoloader-'
           unzip -p Relapse.jar META-INF/MANIFEST.MF | grep -q 'Main-Class: org.bdj.external.Relapse'
           unzip -p Relapse.jar org/bdj/external/Relapse.class | head -c 8 | od -An -tu1 -j6 -N2 | grep -qw 48
           echo "Relapse.jar OK"
@@ -99,10 +105,17 @@ jobs:
           "$JAVA_HOME/bin/jar" cfM "$D/BDMV/JAR/00001.jar" -C 00001 .
           cp "$GITHUB_WORKSPACE/Relapse.jar" "$D/payload.jar"
 
+          # Mirror ps5-bdjb-autoloader's disc layout: Autoloader.java falls back
+          # to /mnt/disc/ps5-unified-autoloader.elf when the jar resource is
+          # missing, and users can inspect/replace the ELF on the disc.
+          AUTO_ELF=$(ls "$GITHUB_WORKSPACE"/src/org/bdj/external/ps5-unified-autoloader-*.elf | head -n 1)
+          cp "$AUTO_ELF" "$D/ps5-unified-autoloader.elf"
+
           "$SDK/host/bin/makefs" -m 16m -t udf -o T=bdre,v=2.50,L=BD-JB-Relapse "$ISO" "$D"
           ls -la "$ISO"
-          # sanity: disc carries the bundled payload and the signed loader
+          # sanity: disc carries the bundled payload, the autoloader ELF and the signed loader
           test -f "$D/payload.jar"
+          test -f "$D/ps5-unified-autoloader.elf"
           unzip -l "$D/BDMV/JAR/00000.jar" | grep -q 'SIG-BD00'
 
       - name: Upload build artifacts

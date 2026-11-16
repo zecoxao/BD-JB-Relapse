@@ -23,7 +23,7 @@ public class Relapse {
 /* constants                                                             */
 /* ===================================================================== */
 
-private static final String VERSION_STRING = "BD-J Relapse 1.0 by EchoStretch, zecoxao, Claude";
+private static final String VERSION_STRING = "BD-J Relapse 2.1.0 by EchoStretch, zecoxao, Claude";
 
 private static final int AF_UNIX = 1;
 private static final int AF_INET = 2;
@@ -2013,6 +2013,7 @@ public static void main(String[] args) {
     Status.println("PLATFORM=" + PLATFORM + " FW_VERSION=" + FW_VERSION);
 
     boolean launched = false;
+    boolean pipesRestored = false;
     try {
         leakKernelBase();
         Status.println("leakKernelBase finished");
@@ -2051,6 +2052,18 @@ public static void main(String[] args) {
 
         launched = launchShellcode();
         Status.println(launched ? "payloads loaded" : "finished");
+
+        if (launched) {
+            /* Repair the crossed pipes before the autoloader starts.  The
+             * unified autoloader kills the disc player entry point (this app)
+             * as soon as it runs, and a pipe whose buffer still aliases the
+             * peer struct panics the console when it is closed. */
+            Status.println("post-launch cleanup: restoring pipes, OIDs left hijacked");
+            cleanupAfterLaunch();
+            pipesRestored = true;
+
+            Autoloader.run();
+        }
     } catch (Throwable t) {
         Status.printStackTrace("Relapse fatal: ", t);
         NativeInvoke.sendNotificationRequest("Relapse fatal: " + t.getMessage());
@@ -2060,8 +2073,10 @@ public static void main(String[] args) {
          * can free a pipe structure through the buffer pointer and take the
          * app down.  Only clean up on failure paths. */
         if (launched) {
-            Status.println("post-launch cleanup: restoring pipes, OIDs left hijacked");
-            cleanupAfterLaunch();
+            if (!pipesRestored) {
+                Status.println("post-launch cleanup: restoring pipes, OIDs left hijacked");
+                cleanupAfterLaunch();
+            }
             Status.println("Relapse main returning");
         } else {
             cleanup();

@@ -1,0 +1,7 @@
+# build outputs
+Relapse.jar
+*.iso
+*.class
+
+# payload scratch downloads
+*.tar.gz
